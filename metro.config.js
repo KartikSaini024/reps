@@ -1,6 +1,6 @@
-const { getDefaultConfig } = require('expo/metro-config');
+const { getSentryExpoConfig } = require('@sentry/react-native/metro');
 
-const config = getDefaultConfig(__dirname);
+const config = getSentryExpoConfig(__dirname);
 
 // Drizzle migrations are bundled as .sql files (see babel inline-import).
 config.resolver.sourceExts.push('sql');

@@ -36,7 +36,8 @@
         }
       ],
       "expo-font",
-      "expo-sqlite"
+      "expo-sqlite",
+      "@sentry/react-native"
     ],
     "experiments": {
       "typedRoutes": true,

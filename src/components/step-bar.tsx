@@ -16,6 +16,9 @@ const GAP = 3;
 /**
  * Segmented progress (DESIGN §8): the segmentation IS the pixel language —
  * never a continuous bar. Filled segments --coin, empty --rule.
+ *
+ * Segments are fixed positional slots with no state or reordering, so the
+ * slot index is the identity and keys are derived from it.
  */
 export function StepBar({ count = 10, value = 0, height = 8 }: StepBarProps) {
   const clamped = Math.min(1, Math.max(0, value));
@@ -23,19 +26,16 @@ export function StepBar({ count = 10, value = 0, height = 8 }: StepBarProps) {
 
   return (
     <View style={{ flexDirection: 'row', gap: GAP }}>
-      {
-        // biome-ignore lint/suspicious/noArrayIndexKey: segments are fixed positional slots with no state or reordering — the index is the identity
-        Array.from({ length: count }, (_, index) => (
-          <View
-            key={index}
-            style={{
-              flex: 1,
-              height,
-              backgroundColor: index < filledCount ? colors.coin : colors.rule,
-            }}
-          />
-        ))
-      }
+      {Array.from({ length: count }, (_, index) => (
+        <View
+          key={`segment-${index}`}
+          style={{
+            flex: 1,
+            height,
+            backgroundColor: index < filledCount ? colors.coin : colors.rule,
+          }}
+        />
+      ))}
     </View>
   );
 }

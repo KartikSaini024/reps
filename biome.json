@@ -27,6 +27,18 @@
       "semicolons": "always"
     }
   },
+  "overrides": [
+    {
+      "includes": ["src/components/step-bar.tsx"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noArrayIndexKey": "off"
+          }
+        }
+      }
+    }
+  ],
   "assist": {
     "enabled": true,
     "actions": {

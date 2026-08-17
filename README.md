@@ -66,19 +66,29 @@ eas build --platform android --profile preview
 ```
 reps/
 ├── src/
-│   └── app/               # Expo Router file routes
-│       ├── _layout.tsx    # Root stack (dark theme)
-│       ├── +not-found.tsx # Fallback for unmatched routes
-│       └── (tabs)/        # Tab navigator group
-│           ├── _layout.tsx  # Tabs: Home / History / Profile
-│           ├── index.tsx    # Home
-│           ├── history.tsx  # History
-│           └── profile.tsx  # Profile
+│   ├── app/               # Expo Router file routes
+│   │   ├── _layout.tsx    # Root gate: fonts → migrations → seed (dark theme)
+│   │   ├── +not-found.tsx # Fallback for unmatched routes
+│   │   ├── gallery.tsx    # Dev-only component gallery
+│   │   └── (tabs)/        # Tab navigator group
+│   │       ├── _layout.tsx  # Tabs: Home / History / Profile
+│   │       ├── index.tsx    # Home — exercise list (from SQLite)
+│   │       ├── history.tsx  # History
+│   │       └── profile.tsx  # Profile
+│   ├── components/        # Base components (Panel, Text, Button, StepBar, Marquee)
+│   ├── config/            # Central settings: sounds, training defaults, telemetry
+│   ├── db/                # Drizzle schema, client, seed, repositories
+│   └── theme/             # Colour tokens, type scale, spacing, PIXEL_SCALE
+├── drizzle/               # Generated migrations (committed — bundled into the app)
 ├── assets/                # App icon, splash, adaptive icons (template defaults)
 ├── app.json               # Expo config — name, IDs, dark UI, plugins, targets
+├── babel.config.js        # babel-preset-expo + .sql inline-import (Drizzle migrations)
+├── metro.config.js        # Sentry Expo config + .sql source extension
 ├── eas.json               # EAS profiles: development / preview / production
 ├── biome.json             # Lint + format config
+├── drizzle.config.ts      # Drizzle Kit config (npm run db:generate)
 ├── tsconfig.json          # TypeScript strict + @/* path alias
+├── PhaseLogs.md           # Per-phase change log
 └── AGENTS.md              # Notes for AI coding agents working in this repo
 ```
 
@@ -97,6 +107,9 @@ reps/
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run lint` | Biome lint + format check |
 | `npm run format` | Biome auto-format |
+| `npm run db:generate` | Generate a Drizzle migration from schema changes |
+
+**Schema changes:** edit `src/db/schema.ts`, run `npm run db:generate`, commit the `drizzle/` folder. Migrations apply automatically on next app start. Never edit a committed migration.
 
 ## Repository
 
