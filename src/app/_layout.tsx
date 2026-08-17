@@ -5,26 +5,21 @@ import {
   SpaceGrotesk_700Bold,
   useFonts as useSpaceGroteskFonts,
 } from '@expo-google-fonts/space-grotesk';
-import * as Sentry from '@sentry/react-native';
 import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { Text } from '@/components/text';
-import { SENTRY_DSN, TELEMETRY } from '@/config/telemetry';
 import { db } from '@/db/client';
 import { ensureSeeded } from '@/db/seed';
+import { initSentry } from '@/telemetry/sentry';
 import { colors, Spacing } from '@/theme';
 
 import migrations from '../../drizzle/migrations';
 
-Sentry.init({
-  dsn: SENTRY_DSN,
-  tracesSampleRate: TELEMETRY.tracesSampleRate,
-  sendDefaultPii: false,
-  enabled: !__DEV__ || TELEMETRY.enabledInDevelopment,
-});
+// Null in Expo Go / web, where Sentry's native module doesn't exist.
+const Sentry = initSentry();
 
 SplashScreen.preventAutoHideAsync().catch(() => {
   // Splash already hidden — safe to ignore.
@@ -87,13 +82,13 @@ function RootLayout() {
 
   useEffect(() => {
     if (migrationError) {
-      Sentry.captureException(migrationError, { tags: { startup: 'migration' } });
+      Sentry?.captureException(migrationError, { tags: { startup: 'migration' } });
     }
   }, [migrationError]);
 
   useEffect(() => {
     if (seedState.status === 'error') {
-      Sentry.captureException(new Error(seedState.message), { tags: { startup: 'seed' } });
+      Sentry?.captureException(new Error(seedState.message), { tags: { startup: 'seed' } });
     }
   }, [seedState.status, seedState.message]);
 
@@ -131,7 +126,7 @@ function RootLayout() {
   );
 }
 
-export default Sentry.wrap(RootLayout);
+export default Sentry ? Sentry.wrap(RootLayout) : RootLayout;
 
 function StartupErrorScreen({
   title,
