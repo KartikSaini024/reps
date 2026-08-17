@@ -114,3 +114,33 @@ record of what changed, why, and what was deliberately deferred.
 4. **Sentry removed** (owner decision, trial cut short): uninstalled `@sentry/react-native`, plugin dropped from app.json, `metro.config.js` back to plain `getDefaultConfig` (+`sql` sourceExt), `src/telemetry/sentry.ts` deleted, `_layout.tsx` Sentry-free, `config/telemetry.ts` kept as a documented off-slot. Verified: production export and dev bundle (correct transform params) contain zero Sentry references and no `@sentry` requires; app markers all present. If crash reporting returns before store submission, re-add per this log's earlier entries — lazily, never statically imported.
 5. **Startup gate made honest (`67e3d4f`):** the dev diagnostics screen had a self-defeating bug — it rendered *underneath* the native splash because `preventAutoHideAsync` was only dropped on success, so a gate hang looked identical to a dead app. Diagnostics now hides the splash when it activates, font-load failures settle the gate (system-font fallback) instead of hanging forever, and per-font errors are shown. All Expo Go native deps verified present in `expo/bundledNativeModules.json`. No Android SDK on the dev machine, so runtime reproduction must happen on the owner's device via this instrumentation.
 6. **Seed crash fixed (`77b6cac`):** `import Crypto from 'expo-crypto'` is `undefined` at runtime — expo-crypto exports only *named* functions (`randomUUID`), and TS's synthetic-default interop let the wrong import style typecheck. Seeding threw "cannot read property 'randomUUID' of undefined", surfaced by the new error screen (migrations had passed). Lesson: verify export style of every first-imported module from its installed `.d.ts`, and prefer named imports for Expo SDK modules.
+
+---
+
+## Phase 3 — Exercise library UI
+
+**Date:** 18 August 2026
+
+**Goal:** Browse, search, filter, view, and create exercises. LOG register: quiet, dense, fast.
+
+**What was done:**
+
+- **FlashList v2.0.2** (`@shopify/flash-list`, via `npx expo install`): New Architecture support verified from current docs before installing; v2 no longer wants `estimatedItemSize`, padding goes in `contentContainerStyle`.
+- **Migration 0002** (`is_favourite`, `last_opened_at` on `exercises`): favourites/recent need storage (PRD B8). Flags live on the row — single-user local-only until accounts exist. `last_opened_at` backs "recently used" *temporarily*; when workout logging lands, `getRecentlyUsedExercises` re-points at `session_exercises` (noted in the repository).
+- **Schema** now exports the vocabulary lists (`MUSCLE_GROUPS`, `EQUIPMENT_TYPES`, `MECHANICS`, `FORCE_DIRECTIONS`, `DIFFICULTIES`) — UI options derive from these, never hardcoded.
+- **Repository** extended: `searchExercises(query, {primaryMuscle, equipment})` — SQLite-side, debounced from the UI (300ms) with a request-id stale guard; alias matching via LIKE on the JSON text column (documented: switch to `json_each` only when every OS SQLite ≥ 3.38); favourites/recent getters; `setFavourite`, `markOpened`, `createCustomExercise`, `updateCustomExercise` (custom-only guard), `softDeleteExercise`.
+- **Components** (`src/components/exercises/`): `SearchField`, `FilterChipRow` (horizontal, single-select, tap-again-to-clear), `ChipSelect` (wrapping, multi for form fields), `ExerciseRow`, `EmptyState`, `MediaPlaceholder` (flat token shapes only — no art until Phase 10), `SectionLabel`, `ExerciseForm` (shared create/edit, validation, chip pickers, no form library per techstack).
+- **Screens:** Library tab (renamed Home → Exercises) = FlashList with search + two filter rows + Favourites/Recent shelves in the header (shelves only while browsing, hidden during search); detail (`/exercise/[id]`) with metadata, instructions/cues/mistakes, media slot, favourite toggle, empty-history state, edit/delete for custom; `/exercise/new`; `/exercise/[id]/edit` (custom-only). Data reloads on focus (`useFocusEffect`) so favourite toggles reflect on return.
+- **UI-change-readiness** (owner's standing instruction): every visual piece is a component; screens compose components + repository calls only; all styling inline-token-based via the theme module.
+
+**Verification:** `tsc --noEmit` clean (after regenerating typed routes — `expo export` does NOT regenerate `.expo/types`; only `expo start` does) · Biome clean · dev bundle probed with real Expo Go params (`transform.routerRoot=src/app`): 7.2MB with SearchField/form/FlashList/`is_favourite` markers present.
+
+**Decisions of note:**
+
+- Alias search matches the stored JSON text via LIKE — pragmatic for ASCII terms; documented upgrade path in the repository.
+- "Recently used" = last *opened* until session logging exists (honest placeholder, swap point documented in code).
+- Type-scale gap found: the log register has no headline size (title/marquee are display-face, banned here). Detail screen uses `uiBold` 20/24 inline; promote to a named variant when a second screen needs it.
+- Seeded exercises are read-only; only custom rows can be edited/soft-deleted (library content is curated data).
+- Delete is soft (`deleted_at`), with an Alert confirm.
+
+**Known gaps left:** no pagination/virtualization tuning needed at 60+ rows (FlashList handles it); media upload lands with B5 (Phase 9); secondary-muscle filtering not exposed in UI (schema + query ready if wanted); the create-form has no dedupe check on names.

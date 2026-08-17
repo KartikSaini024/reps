@@ -15,6 +15,13 @@
       "when": 1786938799625,
       "tag": "0001_faulty_colleen_wing",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1786967410593,
+      "tag": "0002_magical_paibok",
+      "breakpoints": true
     }
   ]
 }

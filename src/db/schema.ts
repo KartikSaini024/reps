@@ -45,6 +45,48 @@ export type Equipment =
 export type Mechanic = 'compound' | 'isolation';
 export type ForceDirection = 'push' | 'pull' | 'static';
 export type Difficulty = 'beginner' | 'intermediate' | 'advanced';
+
+/** Vocabulary lists for pickers/filters — derive UI options from these, never hardcode. */
+export const MUSCLE_GROUPS = [
+  'chest',
+  'front-delts',
+  'side-delts',
+  'rear-delts',
+  'traps',
+  'lats',
+  'upper-back',
+  'lower-back',
+  'biceps',
+  'triceps',
+  'forearms',
+  'quads',
+  'hamstrings',
+  'glutes',
+  'calves',
+  'core',
+  'obliques',
+] as const satisfies readonly MuscleGroup[];
+export const EQUIPMENT_TYPES = [
+  'barbell',
+  'dumbbell',
+  'kettlebell',
+  'machine',
+  'cable',
+  'bodyweight',
+  'band',
+  'other',
+] as const satisfies readonly Equipment[];
+export const MECHANICS = ['compound', 'isolation'] as const satisfies readonly Mechanic[];
+export const FORCE_DIRECTIONS = [
+  'push',
+  'pull',
+  'static',
+] as const satisfies readonly ForceDirection[];
+export const DIFFICULTIES = [
+  'beginner',
+  'intermediate',
+  'advanced',
+] as const satisfies readonly Difficulty[];
 export type SetType = 'warmup' | 'working' | 'drop' | 'failure' | 'amrap';
 export type SessionStatus = 'active' | 'complete' | 'discarded';
 export type RecordType = 'max_weight' | 'max_e1rm' | 'max_set_volume' | 'rep_pr';
@@ -99,6 +141,13 @@ export const exercises = sqliteTable(
     mediaUri: text('media_uri'),
     isCustom: integer('is_custom', { mode: 'boolean' }).notNull().default(false),
     ownerId: text('owner_id').references(() => users.id, { onDelete: 'set null' }),
+    /**
+     * Favourites/recent (PRD B8). Single-user local-only for now: flags live
+     * on the row itself. last_opened_at backs "recently used" until session
+     * logging exists, then recency re-points at session_exercises.
+     */
+    isFavourite: integer('is_favourite', { mode: 'boolean' }).notNull().default(false),
+    lastOpenedAt: integer('last_opened_at', { mode: 'timestamp_ms' }),
   },
   (table) => [
     index('idx_exercises_name').on(table.name),

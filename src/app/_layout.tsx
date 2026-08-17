@@ -45,7 +45,7 @@ function RootLayout() {
   // (Unloaded family names fall back to the system font at render time.)
   const fontsSettled =
     (displayLoaded || displayError !== undefined) && (uiLoaded || uiError !== undefined);
-  const fontError = displayError?.message ?? uiError?.message;
+  const _fontError = displayError?.message ?? uiError?.message;
 
   const { success: migrationsApplied, error: migrationError } = useMigrations(db, migrations);
 
