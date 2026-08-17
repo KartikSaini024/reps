@@ -86,7 +86,7 @@ reps/
 
 - **Android:** compileSdk / targetSdk **36** (SDK 57 default, satisfies the Play Store API 36 mandate), minSdk 24
 - **iOS:** deployment target **16.4** (SDK 57 default; meets the project's iOS 16+ floor)
-- Bundle ID / package: `com.kartiksaini.reps` (changeable until first store submission)
+- Bundle ID / package: `com.krumaxx.reps` (changeable until first store submission)
 
 ## Scripts
 
