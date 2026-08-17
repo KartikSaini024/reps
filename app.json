@@ -37,7 +37,13 @@
       ],
       "expo-font",
       "expo-sqlite",
-      "@sentry/react-native"
+      [
+        "@sentry/react-native",
+        {
+          "organization": "personal-bol",
+          "project": "react-native"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

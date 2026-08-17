@@ -32,6 +32,9 @@ function loadSentry(): SentryModule | null {
 
 /** Initialise Sentry once at app start. Returns null where Sentry can't run. */
 export function initSentry(): SentryModule | null {
+  if (!TELEMETRY.sentryEnabled) {
+    return null;
+  }
   const Sentry = loadSentry();
   if (!Sentry) {
     return null;
