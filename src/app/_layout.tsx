@@ -14,13 +14,9 @@ import { View } from 'react-native';
 import { Text } from '@/components/text';
 import { db } from '@/db/client';
 import { ensureSeeded } from '@/db/seed';
-import { initSentry } from '@/telemetry/sentry';
 import { colors, Spacing } from '@/theme';
 
 import migrations from '../../drizzle/migrations';
-
-// Null in Expo Go / web, where Sentry's native module doesn't exist.
-const Sentry = initSentry();
 
 SplashScreen.preventAutoHideAsync().catch(() => {
   // Splash already hidden — safe to ignore.
@@ -93,18 +89,6 @@ function RootLayout() {
       SplashScreen.hideAsync().catch(() => {});
     }
   }, [ready]);
-
-  useEffect(() => {
-    if (migrationError) {
-      Sentry?.captureException(migrationError, { tags: { startup: 'migration' } });
-    }
-  }, [migrationError]);
-
-  useEffect(() => {
-    if (seedState.status === 'error') {
-      Sentry?.captureException(new Error(seedState.message), { tags: { startup: 'seed' } });
-    }
-  }, [seedState.status, seedState.message]);
 
   if (migrationError) {
     return (
@@ -195,4 +179,4 @@ function StartupErrorScreen({
   );
 }
 
-export default Sentry ? Sentry.wrap(RootLayout) : RootLayout;
+export default RootLayout;
