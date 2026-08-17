@@ -116,6 +116,8 @@ export const routines = sqliteTable(
     name: text('name').notNull(),
     /** Folder grouping is a P1 feature; the column ships now per PRD §9. */
     folderId: text('folder_id'),
+    /** Soft visibility flag for retired routines (keeps history intact). */
+    isArchived: integer('is_archived', { mode: 'boolean' }).notNull().default(false),
     notes: text('notes'),
     lastPerformedAt: integer('last_performed_at', { mode: 'timestamp_ms' }),
   },
