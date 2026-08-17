@@ -1,56 +1,103 @@
-# Welcome to your Expo app 👋
+# REPS
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A gamified gym logger & progress tracker. Built with Expo, TypeScript, and Expo Router.
 
-## Get started
+Current status: **Phase 0 — scaffold only.** Three placeholder tabs, no features.
 
-1. Install dependencies
+## Stack
 
-   ```bash
-   npm install
-   ```
+| Layer | Choice |
+|---|---|
+| Framework | Expo SDK 57 (React Native 0.86, New Architecture) |
+| Language | TypeScript, `strict: true` |
+| Navigation | Expo Router (file-based, `src/app/`) |
+| Lint / format | Biome (replaces ESLint + Prettier) |
+| Builds | EAS Build (cloud, no Mac required) |
 
-2. Start the app
+## Prerequisites
 
-   ```bash
-   npx expo start
-   ```
+- **Node** LTS (20.19+ or 22.12+; this project was scaffolded on Node 26)
+- **npm** (ships with Node)
+- **Expo Go** on your phone — [Android (Play Store)](https://play.google.com/store/apps/details?id=host.exp.exponent) / [iOS (App Store)](https://apps.apple.com/app/apple-store/id982107779) — for running the dev server on a device
+- A free [Expo account](https://expo.dev/signup) for EAS builds
 
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Run the dev server
 
 ```bash
-npm run reset-project
+npm install        # once, after cloning
+npx expo start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Metro starts and prints a QR code. Keep the terminal open.
 
-### Other setup steps
+## Run on your physical device
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+1. Connect your phone to the same Wi-Fi as this machine (or use a USB cable on Android).
+2. Start the dev server (above).
+3. **Android:** open Expo Go → "Scan QR code" → scan the terminal QR.
+   (USB alternative: `npx expo start --android` with USB debugging enabled.)
+4. **iOS:** open the Camera app → scan the QR → it opens in Expo Go.
 
-## Learn more
+The app reloads automatically as you save files.
 
-To learn more about developing your project with Expo, look at the following resources:
+## Build a preview APK (EAS)
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+One-time setup:
 
-## Join the community
+```bash
+npm install -g eas-cli   # or use `npx eas-cli` everywhere
+eas login                 # free Expo account
+```
 
-Join our community of developers creating universal apps.
+Then:
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```bash
+eas build --platform android --profile preview
+```
+
+- First run asks to create the EAS project for `kartiksaini024/reps` — accept; it writes the project ID into `app.json`.
+- The build runs in Expo's cloud (~10–25 min on the free tier).
+- When finished, the CLI prints a download URL for the `.apk`. Install it on your phone (Android will ask to allow installs from that source — that's normal).
+
+`eas build --platform android --profile development` builds a development client instead (useful once native dependencies arrive; requires the `expo-dev-client` package at that point).
+
+## Project structure
+
+```
+reps/
+├── src/
+│   └── app/               # Expo Router file routes
+│       ├── _layout.tsx    # Root stack (dark theme)
+│       ├── +not-found.tsx # Fallback for unmatched routes
+│       └── (tabs)/        # Tab navigator group
+│           ├── _layout.tsx  # Tabs: Home / History / Profile
+│           ├── index.tsx    # Home
+│           ├── history.tsx  # History
+│           └── profile.tsx  # Profile
+├── assets/                # App icon, splash, adaptive icons (template defaults)
+├── app.json               # Expo config — name, IDs, dark UI, plugins, targets
+├── eas.json               # EAS profiles: development / preview / production
+├── biome.json             # Lint + format config
+├── tsconfig.json          # TypeScript strict + @/* path alias
+└── AGENTS.md              # Notes for AI coding agents working in this repo
+```
+
+## Native targets (verified from installed SDK)
+
+- **Android:** compileSdk / targetSdk **36** (SDK 57 default, satisfies the Play Store API 36 mandate), minSdk 24
+- **iOS:** deployment target **16.4** (SDK 57 default; meets the project's iOS 16+ floor)
+- Bundle ID / package: `com.kartiksaini.reps` (changeable until first store submission)
+
+## Scripts
+
+| Command | What it does |
+|---|---|
+| `npm start` | Start Metro dev server |
+| `npm run android` / `npm run ios` / `npm run web` | Start and open on that platform |
+| `npm run typecheck` | `tsc --noEmit` |
+| `npm run lint` | Biome lint + format check |
+| `npm run format` | Biome auto-format |
+
+## Repository
+
+- Remote: `https://github.com/KartikSaini024/reps.git`
