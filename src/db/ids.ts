@@ -1,4 +1,4 @@
-import Crypto from 'expo-crypto';
+import { randomUUID } from 'expo-crypto';
 
 /**
  * Client-generated UUID primary keys (project convention). Minted here in
@@ -6,5 +6,5 @@ import Crypto from 'expo-crypto';
  * drizzle-kit can load it under Node.
  */
 export function newId(): string {
-  return Crypto.randomUUID();
+  return randomUUID();
 }
