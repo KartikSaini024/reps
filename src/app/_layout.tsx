@@ -32,28 +32,37 @@ type SeedState = { status: 'pending' | 'running' | 'done' | 'error'; message?: s
  * stays closed for 2.5s becomes a diagnostics screen naming the stuck step.
  */
 function RootLayout() {
-  const [displayLoaded] = useFonts({
+  const [displayLoaded, displayError] = useFonts({
     Silkscreen_400Regular,
     Silkscreen_700Bold,
   });
-  const [uiLoaded] = useSpaceGroteskFonts({
+  const [uiLoaded, uiError] = useSpaceGroteskFonts({
     SpaceGrotesk_400Regular,
     SpaceGrotesk_500Medium,
     SpaceGrotesk_700Bold,
   });
+  // A font load FAILURE must not brick the app: proceed with system fonts.
+  // (Unloaded family names fall back to the system font at render time.)
+  const fontsSettled =
+    (displayLoaded || displayError !== undefined) && (uiLoaded || uiError !== undefined);
+  const fontError = displayError?.message ?? uiError?.message;
 
   const { success: migrationsApplied, error: migrationError } = useMigrations(db, migrations);
 
   const [seedState, setSeedState] = useState<SeedState>({ status: 'pending' });
 
   // Dev safety net: if the gate hasn't opened within 2.5s, say why instead of
-  // showing an eternal splash. (Production keeps the splash.)
+  // showing an eternal splash — and drop the native splash so this screen is
+  // actually visible (preventAutoHideAsync would otherwise cover it forever).
   const [diagnostics, setDiagnostics] = useState(false);
   useEffect(() => {
     if (!__DEV__) {
       return;
     }
-    const timer = setTimeout(() => setDiagnostics(true), 2500);
+    const timer = setTimeout(() => {
+      setDiagnostics(true);
+      SplashScreen.hideAsync().catch(() => {});
+    }, 2500);
     return () => clearTimeout(timer);
   }, []);
 
@@ -82,7 +91,7 @@ function RootLayout() {
     };
   }, [migrationsApplied]);
 
-  const ready = displayLoaded && uiLoaded && migrationsApplied && seedState.status === 'done';
+  const ready = fontsSettled && migrationsApplied && seedState.status === 'done';
 
   useEffect(() => {
     if (ready) {
@@ -124,8 +133,13 @@ function RootLayout() {
           }}
         >
           <Text variant="title">Startup hang (dev)</Text>
-          <Text variant="micro">splash fonts: {displayLoaded ? 'ok' : 'PENDING'}</Text>
-          <Text variant="micro">ui fonts: {uiLoaded ? 'ok' : 'PENDING'}</Text>
+          <Text variant="micro">
+            splash fonts:{' '}
+            {displayLoaded ? 'ok' : displayError ? `ERROR: ${displayError.message}` : 'PENDING'}
+          </Text>
+          <Text variant="micro">
+            ui fonts: {uiLoaded ? 'ok' : uiError ? `ERROR: ${uiError.message}` : 'PENDING'}
+          </Text>
           <Text variant="micro">migrations: {migrationsApplied ? 'ok' : 'PENDING'}</Text>
           <Text variant="micro">seed: {seedState.status}</Text>
           <Text variant="micro">env: {Constants.executionEnvironment}</Text>
