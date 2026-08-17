@@ -6,6 +6,7 @@ import {
   useFonts as useSpaceGroteskFonts,
 } from '@expo-google-fonts/space-grotesk';
 import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
+import Constants from 'expo-constants';
 import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
@@ -25,11 +26,14 @@ SplashScreen.preventAutoHideAsync().catch(() => {
   // Splash already hidden — safe to ignore.
 });
 
+type SeedState = { status: 'pending' | 'running' | 'done' | 'error'; message?: string };
+
 /**
  * App-start gate: fonts → SQLite migrations → first-launch seed. Nothing
  * renders (splash stays up) until the database is verified. A failed
  * migration shows a clear error screen instead of silently running on a
- * broken database — training history is irreplaceable.
+ * broken database — training history is irreplaceable. In dev, a gate that
+ * stays closed for 2.5s becomes a diagnostics screen naming the stuck step.
  */
 function RootLayout() {
   const [displayLoaded] = useFonts({
@@ -44,19 +48,29 @@ function RootLayout() {
 
   const { success: migrationsApplied, error: migrationError } = useMigrations(db, migrations);
 
-  const [seedState, setSeedState] = useState<{ status: 'pending' | 'error'; message?: string }>({
-    status: 'pending',
-  });
+  const [seedState, setSeedState] = useState<SeedState>({ status: 'pending' });
+
+  // Dev safety net: if the gate hasn't opened within 2.5s, say why instead of
+  // showing an eternal splash. (Production keeps the splash.)
+  const [diagnostics, setDiagnostics] = useState(false);
+  useEffect(() => {
+    if (!__DEV__) {
+      return;
+    }
+    const timer = setTimeout(() => setDiagnostics(true), 2500);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (!migrationsApplied) {
       return;
     }
     let cancelled = false;
+    setSeedState({ status: 'running' });
     ensureSeeded()
       .then(() => {
         if (!cancelled) {
-          setSeedState({ status: 'pending' });
+          setSeedState({ status: 'done' });
         }
       })
       .catch((error: unknown) => {
@@ -72,7 +86,7 @@ function RootLayout() {
     };
   }, [migrationsApplied]);
 
-  const ready = displayLoaded && uiLoaded && migrationsApplied && seedState.status === 'pending';
+  const ready = displayLoaded && uiLoaded && migrationsApplied && seedState.status === 'done';
 
   useEffect(() => {
     if (ready) {
@@ -113,6 +127,27 @@ function RootLayout() {
   }
 
   if (!ready) {
+    if (diagnostics) {
+      return (
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: colors.void,
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: Spacing[6],
+            gap: Spacing[2],
+          }}
+        >
+          <Text variant="title">Startup hang (dev)</Text>
+          <Text variant="micro">splash fonts: {displayLoaded ? 'ok' : 'PENDING'}</Text>
+          <Text variant="micro">ui fonts: {uiLoaded ? 'ok' : 'PENDING'}</Text>
+          <Text variant="micro">migrations: {migrationsApplied ? 'ok' : 'PENDING'}</Text>
+          <Text variant="micro">seed: {seedState.status}</Text>
+          <Text variant="micro">env: {Constants.executionEnvironment}</Text>
+        </View>
+      );
+    }
     return null;
   }
 
@@ -125,8 +160,6 @@ function RootLayout() {
     </ThemeProvider>
   );
 }
-
-export default Sentry ? Sentry.wrap(RootLayout) : RootLayout;
 
 function StartupErrorScreen({
   title,
@@ -161,3 +194,5 @@ function StartupErrorScreen({
     </View>
   );
 }
+
+export default Sentry ? Sentry.wrap(RootLayout) : RootLayout;
