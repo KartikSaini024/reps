@@ -5,12 +5,15 @@
   "dependencies": {
     "@expo-google-fonts/silkscreen": "^0.4.2",
     "@expo-google-fonts/space-grotesk": "^0.4.1",
+    "drizzle-orm": "^0.45.2",
     "expo": "~57.0.13",
     "expo-constants": "~57.0.11",
+    "expo-crypto": "~57.0.1",
     "expo-font": "~57.0.1",
     "expo-linking": "~57.0.6",
     "expo-router": "~57.0.13",
     "expo-splash-screen": "~57.0.6",
+    "expo-sqlite": "~57.0.1",
     "expo-updates": "~57.0.14",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -25,6 +28,8 @@
   "devDependencies": {
     "@biomejs/biome": "2.5.8",
     "@types/react": "~19.2.2",
+    "babel-plugin-inline-import": "^3.0.0",
+    "drizzle-kit": "^0.31.10",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -33,6 +38,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
     "lint": "biome check .",
     "format": "biome format --write ."
   },

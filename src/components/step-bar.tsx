@@ -23,17 +23,19 @@ export function StepBar({ count = 10, value = 0, height = 8 }: StepBarProps) {
 
   return (
     <View style={{ flexDirection: 'row', gap: GAP }}>
-      {Array.from({ length: count }, (_, index) => (
+      {
         // biome-ignore lint/suspicious/noArrayIndexKey: segments are fixed positional slots with no state or reordering — the index is the identity
-        <View
-          key={index}
-          style={{
-            flex: 1,
-            height,
-            backgroundColor: index < filledCount ? colors.coin : colors.rule,
-          }}
-        />
-      ))}
+        Array.from({ length: count }, (_, index) => (
+          <View
+            key={index}
+            style={{
+              flex: 1,
+              height,
+              backgroundColor: index < filledCount ? colors.coin : colors.rule,
+            }}
+          />
+        ))
+      }
     </View>
   );
 }
