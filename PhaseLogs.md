@@ -144,3 +144,32 @@ record of what changed, why, and what was deliberately deferred.
 - Delete is soft (`deleted_at`), with an Alert confirm.
 
 **Known gaps left:** no pagination/virtualization tuning needed at 60+ rows (FlashList handles it); media upload lands with B5 (Phase 9); secondary-muscle filtering not exposed in UI (schema + query ready if wanted); the create-form has no dedupe check on names.
+
+---
+
+## Phase 4 — Routine creation and management
+
+**Date:** 18 August 2026
+
+**Goal:** Build, edit, and organise workout templates. LOG register.
+
+**What was done:**
+
+- **Routines repository** (`src/db/repositories/routines.ts`): list with exercise counts (leftJoin + groupBy), fetch-with-entries (join to exercises for names), create/update inside transactions, duplicate (deep copy, " (copy)" name), soft delete cascading to entries. `updateRoutine` soft-deletes the previous entry set and inserts the new order — reorderings never hard-delete rows.
+- **Local user** (`src/db/repositories/users.ts`): `getOrCreateLocalUser()` — routines need a `user_id` FK and skip-first onboarding (PRD A1) means no account; a single local users row is created lazily and cached. When accounts arrive it gets linked, its UUID PK never changes.
+- **Starter routines** (PRD A6): `starter-routines.ts` — 6 templates covering the 3/4/6-day frequencies (Full Body; Upper+Lower; Push/Pull/Legs days). Referenced by exact library name; the seeder resolves to ids and throws on any mismatch. `ensureSeeded` is now per-table idempotent: exercises and routines seed independently, so existing installs pick up the starters without touching anything else.
+- **Zustand 5.0.15** (first use — techstack-mandated): `src/stores/routine-editor.ts` holds the editor draft so the exercise picker route can contribute and the editor survives navigation. Null rep-targets normalise to 8–12 at hydration.
+- **ReorderableList** (`src/components/reorderable-list.tsx`): hand-rolled long-press drag on Gesture Handler (`Pan().activateAfterLongPress(250)`) + Reanimated 4 worklets (finger-tracking on the UI thread, 120ms settle, siblings reflow as plain state). Fixed-height rows; per-row gesture instances; active row tracked by key so it survives reorders mid-drag. `react-native-draggable-flatlist` was evaluated and rejected: its peer range admits Reanimated 4 but was built against v3 and actual compat is unverifiable without a device — per the working agreement, no gamble. `GestureHandlerRootView` added at the app root (required for any GH gesture).
+- **Screens:** Routines tab (4th tab — Exercises/Routines/History/Profile) with counts + empty state; shared `RoutineEditorView` (name, notes, reorderable entries with per-exercise sets × rep-range numeric fields, add-exercise picker with search + multi-add, validation, save; duplicate/delete for existing routines); `SafeScreen` wrapper extracted (safe-area boilerplate was spreading); `LabeledInput` extracted from the exercise form and reused.
+- Per-exercise rest overrides (schema supports `rest_seconds`) deliberately not exposed yet — E2 territory.
+
+**Verification:** `tsc --noEmit` clean · Biome clean · dev bundle probed with real Expo Go params: 9.8MB with ReorderableList/starter-routine/worklet markers present.
+
+**Decisions of note:**
+
+- Drag-reorder hand-rolled rather than a library (compat gamble + log-register minimalism); if it ever feels cheap, revisit `react-native-draggable-flatlist` once it explicitly supports Reanimated 4.
+- Starter "3 templates" expanded to 6 routine rows (Upper/Lower and PPL are multi-day templates; each day is its own routine, labelled in notes).
+- Rep-target nullability (schema-optional per PRD) is normalised at the editor boundary rather than via a migration to NOT NULL.
+- Editor draft in Zustand rather than route params — first Zustand use, the pattern for the Phase 5 active-workout session state.
+
+**Known gaps left:** no drag auto-scroll when dragging beyond the visible area (lists are short; revisit if routines grow past ~10 entries); no supersets/folders (explicitly out of scope); picker doesn't filter out exercises already added (they're marked "added" instead).

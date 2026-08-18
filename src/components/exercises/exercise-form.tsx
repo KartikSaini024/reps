@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { View } from 'react-native';
 import { Button } from '@/components/button';
 import { ChipSelect } from '@/components/exercises/chip-select';
+import { LabeledInput } from '@/components/labeled-input';
 import { Text } from '@/components/text';
 import { TRAINING_DEFAULTS } from '@/config/training-defaults';
 import type { ExerciseInput } from '@/db/repositories/exercises';
@@ -18,7 +19,7 @@ import {
   MUSCLE_GROUPS,
   type MuscleGroup,
 } from '@/db/schema';
-import { colors, FontFamily, Spacing } from '@/theme';
+import { Spacing } from '@/theme';
 
 export interface ExerciseFormProps {
   initial?: Exercise;
@@ -202,7 +203,7 @@ export function ExerciseForm({ initial, submitLabel, onSubmit }: ExerciseFormPro
         value={form.defaultRestSeconds}
         onChangeText={(v) => set('defaultRestSeconds', v.replace(/[^0-9]/g, ''))}
         placeholder={String(TRAINING_DEFAULTS.restSeconds.compound)}
-        keyboardType="number-pad"
+        numeric
       />
       <LabeledInput
         label="Instructions"
@@ -230,57 +231,6 @@ export function ExerciseForm({ initial, submitLabel, onSubmit }: ExerciseFormPro
       ) : null}
 
       <Button label={submitLabel} onPress={() => void handleSubmit()} disabled={submitting} />
-    </View>
-  );
-}
-
-function LabeledInput({
-  label,
-  value,
-  onChangeText,
-  placeholder,
-  multiline = false,
-  keyboardType = 'default',
-}: {
-  label: string;
-  value: string;
-  onChangeText: (text: string) => void;
-  placeholder?: string;
-  multiline?: boolean;
-  keyboardType?: 'default' | 'number-pad';
-}) {
-  return (
-    <View style={{ gap: Spacing[2] }}>
-      <Text variant="micro" color="faint" style={{ textTransform: 'uppercase', letterSpacing: 1 }}>
-        {label}
-      </Text>
-      <View
-        style={{
-          borderWidth: 2,
-          borderColor: colors.edge,
-          backgroundColor: colors.panel,
-          paddingHorizontal: Spacing[3],
-          minHeight: 48,
-          justifyContent: multiline ? 'flex-start' : 'center',
-        }}
-      >
-        <TextInput
-          value={value}
-          onChangeText={onChangeText}
-          placeholder={placeholder}
-          placeholderTextColor={colors.faint}
-          multiline={multiline}
-          keyboardType={keyboardType}
-          style={{
-            color: colors.ink,
-            fontFamily: keyboardType === 'number-pad' ? FontFamily.data : FontFamily.ui,
-            fontVariant: keyboardType === 'number-pad' ? ['tabular-nums'] : undefined,
-            fontSize: 15,
-            paddingVertical: multiline ? Spacing[2] : 0,
-            textAlignVertical: multiline ? 'top' : 'center',
-          }}
-        />
-      </View>
     </View>
   );
 }
