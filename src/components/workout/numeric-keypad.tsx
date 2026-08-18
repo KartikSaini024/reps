@@ -54,41 +54,33 @@ export function NumericKeypad({
       accessibilityLabel="Numeric keypad"
     >
       <View style={{ flexDirection: 'row' }}>
-        <View style={{ flexDirection: 'row' }}>
-          <DigitKey label="7" onPress={() => pressDigit('7')} />
-          <DigitKey label="8" onPress={() => pressDigit('8')} />
-          <DigitKey label="9" onPress={() => pressDigit('9')} />
-          <IncKey label={`+5${units}`} onPress={() => pressIncrement(5)} />
-        </View>
+        <DigitKey label="7" onPress={() => pressDigit('7')} />
+        <DigitKey label="8" onPress={() => pressDigit('8')} />
+        <DigitKey label="9" onPress={() => pressDigit('9')} />
+        <IncKey label={`+5${units}`} onPress={() => pressIncrement(5)} />
       </View>
       <View style={{ flexDirection: 'row' }}>
-        <View style={{ flexDirection: 'row' }}>
-          <DigitKey label="4" onPress={() => pressDigit('4')} />
-          <DigitKey label="5" onPress={() => pressDigit('5')} />
-          <DigitKey label="6" onPress={() => pressDigit('6')} />
-          <IncKey label={`-5${units}`} onPress={() => pressIncrement(-5)} />
-        </View>
+        <DigitKey label="4" onPress={() => pressDigit('4')} />
+        <DigitKey label="5" onPress={() => pressDigit('5')} />
+        <DigitKey label="6" onPress={() => pressDigit('6')} />
+        <IncKey label={`-5${units}`} onPress={() => pressIncrement(-5)} />
       </View>
       <View style={{ flexDirection: 'row' }}>
-        <View style={{ flexDirection: 'row' }}>
-          <DigitKey label="1" onPress={() => pressDigit('1')} />
-          <DigitKey label="2" onPress={() => pressDigit('2')} />
-          <DigitKey label="3" onPress={() => pressDigit('3')} />
-          <IncKey label={`+2.5${units}`} onPress={() => pressIncrement(2.5)} />
-        </View>
+        <DigitKey label="1" onPress={() => pressDigit('1')} />
+        <DigitKey label="2" onPress={() => pressDigit('2')} />
+        <DigitKey label="3" onPress={() => pressDigit('3')} />
+        <IncKey label={`+2.5${units}`} onPress={() => pressIncrement(2.5)} />
       </View>
       <View style={{ flexDirection: 'row' }}>
-        <View style={{ flexDirection: 'row' }}>
-          <DigitKey
-            label="."
-            onPress={pressDecimal}
-            disabled={!allowDecimal}
-            accessibilityLabel="Decimal point"
-          />
-          <DigitKey label="0" onPress={() => pressDigit('0')} />
-          <DigitKey label="⌫" onPress={pressBackspace} accessibilityLabel="Backspace" />
-          <IncKey label={`-2.5${units}`} onPress={() => pressIncrement(-2.5)} />
-        </View>
+        <DigitKey
+          label="."
+          onPress={pressDecimal}
+          disabled={!allowDecimal}
+          accessibilityLabel="Decimal point"
+        />
+        <DigitKey label="0" onPress={() => pressDigit('0')} />
+        <DigitKey label="⌫" onPress={pressBackspace} accessibilityLabel="Backspace" />
+        <IncKey label={`-2.5${units}`} onPress={() => pressIncrement(-2.5)} />
       </View>
       <View style={{ flexDirection: 'row' }}>
         {hasFurtherFields ? <WideKey label="Next →" onPress={onNext} kind="secondary" /> : null}

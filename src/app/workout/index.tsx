@@ -1,7 +1,7 @@
 import { useKeepAwake } from 'expo-keep-awake';
-import { router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, TextInput, View } from 'react-native';
+import { router, Stack } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, BackHandler, Pressable, ScrollView, TextInput, View } from 'react-native';
 
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/exercises/empty-state';
@@ -132,7 +132,7 @@ export default function ActiveWorkout() {
   };
 
   /** Commit the current draft into the store (canonical kg for weight). */
-  const commitDraft = () => {
+  const commitDraft = useCallback(() => {
     if (!activeField) {
       return;
     }
@@ -147,7 +147,7 @@ export default function ActiveWorkout() {
       const parsed = Number.parseFloat(draft.replace(',', '.'));
       setRpe(setId, Number.isNaN(parsed) ? null : Math.min(10, Math.max(0, parsed)));
     }
-  };
+  }, [activeField, draft, units, setWeight, setReps, setRpe]);
 
   const moveNext = () => {
     if (!activeField) {
@@ -171,6 +171,23 @@ export default function ActiveWorkout() {
     commitDraft();
     setActiveField(null);
   };
+
+  /** Back button / tap outside: close the keypad, never lose the draft. */
+  const dismissKeypad = useCallback(() => {
+    commitDraft();
+    setActiveField(null);
+  }, [commitDraft]);
+
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (activeField) {
+        dismissKeypad();
+        return true; // Consume: first back closes the keypad, not the screen.
+      }
+      return false;
+    });
+    return () => subscription.remove();
+  }, [activeField, dismissKeypad]);
 
   const hasFurtherFields = useMemo(() => {
     if (!activeField) {
@@ -225,8 +242,16 @@ export default function ActiveWorkout() {
 
   return (
     <SafeScreen>
+      {/* Tapping outside the keypad dismisses it (committing the draft).
+          Taps on fields still win: their press opens the next field. */}
+      <Stack.Screen options={{ gestureEnabled: !activeField }} />
       {/* Header: name + live timer + stats */}
       <View
+        onTouchStart={() => {
+          if (activeField) {
+            dismissKeypad();
+          }
+        }}
         style={{
           padding: Spacing[4],
           gap: Spacing[1],
@@ -298,7 +323,15 @@ export default function ActiveWorkout() {
         <EmptyState message="Empty session — add the first exercise below." />
       ) : null}
 
-      <ScrollView contentContainerStyle={{ padding: Spacing[4], gap: Spacing[5] }}>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ padding: Spacing[4], gap: Spacing[5] }}
+        onTouchStart={() => {
+          if (activeField) {
+            dismissKeypad();
+          }
+        }}
+      >
         {exercises.map((exercise, index) => (
           <ExerciseSection
             key={exercise.sessionExerciseId}
@@ -335,8 +368,14 @@ export default function ActiveWorkout() {
         />
       ) : null}
 
-      {/* Bottom controls — thumb zone */}
+      {/* Bottom controls — thumb zone. A touch here also commits+closes
+          any open keypad draft so Finish never loses the last edit. */}
       <View
+        onTouchStart={() => {
+          if (activeField) {
+            dismissKeypad();
+          }
+        }}
         style={{
           padding: Spacing[4],
           gap: Spacing[3],
