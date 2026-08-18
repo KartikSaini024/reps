@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, isNotNull, isNull, like, or } from 'drizzle-orm';
+import { and, asc, desc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 
 import { db } from '../client';
 import { newId } from '../ids';
@@ -61,10 +61,11 @@ export async function searchExercises(
   const q = query.trim();
   if (q) {
     const pattern = escapeLike(q);
-    const nameOrAlias = or(like(exercises.name, pattern), like(exercises.aliases, pattern));
-    if (nameOrAlias) {
-      conditions.push(nameOrAlias);
-    }
+    // ESCAPE '\' is required — without it SQLite treats the backslash in the
+    // pattern as a literal and % / _ stay wildcards.
+    conditions.push(
+      sql`(${exercises.name} LIKE ${pattern} ESCAPE '\\' OR ${exercises.aliases} LIKE ${pattern} ESCAPE '\\')`,
+    );
   }
   if (filters.primaryMuscle) {
     conditions.push(eq(exercises.primaryMuscle, filters.primaryMuscle));

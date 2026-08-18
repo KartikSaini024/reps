@@ -173,3 +173,5 @@ record of what changed, why, and what was deliberately deferred.
 - Editor draft in Zustand rather than route params — first Zustand use, the pattern for the Phase 5 active-workout session state.
 
 **Known gaps left:** no drag auto-scroll when dragging beyond the visible area (lists are short; revisit if routines grow past ~10 entries); no supersets/folders (explicitly out of scope); picker doesn't filter out exercises already added (they're marked "added" instead).
+
+**QA pass (same day, pre-phase-5):** three real bugs found by audit and fixed: (1) ReorderableList slot math trusted the gesture closure's `index` prop, which can go stale when mid-drag reorders re-render the list — the row now tracks its live slot in a shared value the worklet reads; (2) `getOrCreateLocalUser` could double-insert under concurrent first calls (seed + screen) — now promise-memoised with failure-clearing retry; (3) search LIKE patterns escaped `%`/`_`/`\` but SQLite ignores backslash escaping without an explicit `ESCAPE '\'` clause — raw sql with ESCAPE added. Verified: tsc, Biome, export, and dev bundle (real Expo Go params) all carry the fixes.

@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { Text as RNText, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -102,10 +102,18 @@ function DragRow({
   onDragEnd: () => void;
   children: ReactNode;
 }) {
+  // Live slot of this row, kept in a shared value: gesture callbacks may
+  // run from a stale render's closure after mid-drag reorders re-render the
+  // list, so the worklet must never trust the captured `index` prop.
+  const currentIndex = useSharedValue(index);
+  useEffect(() => {
+    currentIndex.value = index;
+  }, [index, currentIndex]);
+
   const gesture = Gesture.Pan()
     .activateAfterLongPress(250)
     .onStart(() => {
-      slot.value = index;
+      slot.value = currentIndex.value;
       dragY.value = 0;
       runOnJS(onDragStart)();
       if (onDragStateChange) {
@@ -114,7 +122,7 @@ function DragRow({
     })
     .onChange((event) => {
       dragY.value += event.changeY;
-      const nextSlot = clampSlot(index + Math.round(dragY.value / rowHeight), count);
+      const nextSlot = clampSlot(currentIndex.value + Math.round(dragY.value / rowHeight), count);
       if (nextSlot !== slot.value) {
         const from = slot.value;
         const to = nextSlot;
