@@ -6,10 +6,12 @@ import { EmptyState } from '@/components/exercises/empty-state';
 import { SectionLabel } from '@/components/exercises/section-label';
 import { Text } from '@/components/text';
 import { formatDuration } from '@/components/workout/active-workout-banner';
+import { formatWeightKg, weightUnitLabel } from '@/config/units';
 import { getLatestCompletedSession } from '@/db/repositories/sessions';
 import { getOrCreateLocalUser } from '@/db/repositories/users';
 import type { Session } from '@/db/schema';
 import { useActiveSessionStore } from '@/stores/active-session';
+import { useSettingsStore } from '@/stores/settings';
 import { colors, FontFamily, Spacing } from '@/theme';
 
 /**
@@ -19,6 +21,7 @@ import { colors, FontFamily, Spacing } from '@/theme';
 export default function History() {
   const [latest, setLatest] = useState<Session | null>(null);
   const lastFinished = useActiveSessionStore((state) => state.lastFinished);
+  const units = useSettingsStore((state) => state.units);
 
   useFocusEffect(
     useCallback(() => {
@@ -58,7 +61,7 @@ export default function History() {
           </Text>
           <Text variant="dataL">
             {lastFinished.completedSetCount} sets ·{' '}
-            {lastFinished.totalVolumeKg.toLocaleString('en-AU')} kg ·{' '}
+            {formatWeightKg(lastFinished.totalVolumeKg, units)} {weightUnitLabel(units)} ·{' '}
             {formatDuration(lastFinished.durationSeconds)}
           </Text>
         </View>
@@ -81,7 +84,7 @@ export default function History() {
             <Text variant="body">{latest.startedAt.toLocaleString('en-AU')}</Text>
             <Text variant="dataL">
               {latest.durationSeconds ? formatDuration(latest.durationSeconds) : '–'} ·{' '}
-              {Math.round(latest.totalVolume).toLocaleString('en-AU')} kg
+              {formatWeightKg(latest.totalVolume, units)} {weightUnitLabel(units)}
             </Text>
           </View>
           <Text variant="micro" color="faint">

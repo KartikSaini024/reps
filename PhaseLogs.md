@@ -213,3 +213,32 @@ record of what changed, why, and what was deliberately deferred.
 - History tab remains a placeholder (latest session only) — full history is the analytics phase.
 
 **Known gaps left:** rest timer (hook stubbed); set types/RPE/notes/units (Phase 6 — set rows already carry `setType` and volume already excludes non-working sets); warm-up exclusion logic present but invisible until types exist; banner on non-tab screens (exercise detail, pickers) intentionally omitted for this phase — the session is still reachable via tab bar.
+
+---
+
+## Phase 6 — Custom keypad and set types
+
+**Date:** 18 August 2026
+
+**Goal:** Number entry faster than the system keyboard. Canonical storage stays kg.
+
+**What was done:**
+
+- **Numeric keypad** (`numeric-keypad.tsx`): 56dp keys — digits, decimal (weight/RPE only), backspace, **unit-aware ±2.5/±5** (increments operate on the display-unit draft, so kg/lb is automatic), **Next → / Done**. Pinned above the bottom controls while a field is active; fields are Pressables that open the keypad — the system keyboard never appears for set fields. Next tabs weight → reps → (RPE) within a row and into the next uncompleted row without dismissing; Done commits and closes.
+- **Set types** (PRD D4): tap the set number to cycle working → warm-up → drop → failure → AMRAP. Badges: WU (cyan), D (amber), F (magenta), A (mint); working shows the plain number. Long-press still removes the set. **Warm-up sets are excluded from volume, set count, and e1RM** (finish-time SQL already filtered `working`; live header counts filter too; `estimate1rm` returns null for warm-ups).
+- **RPE field** (PRD D5): collapsed by default; Profile toggle ("sticky" per US-08 AC) persists on `users.show_rpe` — **migration 0003**. When on, set rows gain an RPE column (keypad-driven, decimal allowed) written through the session queue.
+- **Notes** (PRD D8): per-session (✎ in the workout header) and per-exercise (✎ in each section header) inline multi-line inputs — never modal. Writes debounced 600ms through the ordered session queue; flushed on finish/discard; restored by crash recovery.
+- **Units** (PRD A4): Profile kg/lb toggle persisted on `users.units`. All workout-facing display converts at the render layer only (`config/units.ts`: kg→display on render, display→kg once on keypad commit, stored values never rounded or round-tripped) — set rows, PREV labels, LAST summary, header volume, History card. Keypad increments and column headers follow the setting.
+- **Store refactor**: active-session sets now carry canonical `weightKg`/`reps`/`rpe`/`setType` (text drafts live only in the keypad); type cycling and debounced note writes added; recovery restores types/RPE/notes.
+
+**Verification:** `tsc --noEmit` clean · Biome clean · production export + dev bundle carry keypad/type/RPE/migration-0003 markers (`Next \u2192` survives babel's unicode escaping — grep with that in mind).
+
+**Decisions of note:**
+
+- Set-type control is tap-to-cycle on the set number (zero added chrome in the DESIGN §8 grid); a dedicated picker would add a modal — banned mid-workout.
+- Draft text lives in the workout screen (single keypad instance, single source for tabbing); commits are single conversions — never stored as text.
+- Failure badge uses `--pr` magenta as the only "alarm" token available; distinct from PR celebrations by context (single letter in the set grid vs. full magenta toast). Documented if this needs revisiting.
+- Units apply to workout-facing surfaces this phase; library detail screens still show canonical kg (nothing workout-critical there; unify when the analytics phase touches those screens).
+- Settings UI lives on the Profile tab (placeholder home until the real profile phase).
+
+**Known gaps left:** rest timer (the `onSetCompleted` hook awaits its phase); RPE entry is free-form 0–10 by keypad (0.5 steps rely on typing "7.5"); notes use the system keyboard (correct — text, not numbers).

@@ -120,6 +120,8 @@ export const users = sqliteTable('users', {
   units: text('units').$type<Units>().notNull().default('kg'),
   weeklyGoal: integer('weekly_goal').notNull().default(3),
   experienceLevel: text('experience_level').$type<ExperienceLevel>().notNull().default('new'),
+  /** Per-set RPE field in the workout UI — collapsed until enabled (PRD D5). */
+  showRpe: integer('show_rpe', { mode: 'boolean' }).notNull().default(false),
 });
 
 export const exercises = sqliteTable(

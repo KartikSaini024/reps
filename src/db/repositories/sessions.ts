@@ -26,6 +26,7 @@ export interface ActiveSetData {
   setIndex: number;
   weightKg: number | null;
   reps: number | null;
+  rpe: number | null;
   setType: SetType;
   isCompleted: boolean;
 }
@@ -35,6 +36,7 @@ export interface ActiveExerciseData {
   exerciseId: string;
   exerciseName: string;
   orderIndex: number;
+  notes: string | null;
   sets: ActiveSetData[];
 }
 
@@ -43,6 +45,7 @@ export interface ActiveSessionData {
   startedAt: number;
   routineId: string | null;
   routineName: string | null;
+  notes: string | null;
   exercises: ActiveExerciseData[];
 }
 
@@ -153,6 +156,7 @@ export async function startSession(
       exerciseId: spec.exerciseId,
       exerciseName: spec.exerciseName,
       orderIndex: index,
+      notes: null,
       sets: Array.from({ length: spec.targetSets }, (_, setIndex) => {
         const prefill = prefillFor(previous, setIndex);
         return {
@@ -160,6 +164,7 @@ export async function startSession(
           setIndex,
           weightKg: prefill.weightKg,
           reps: prefill.reps,
+          rpe: null as number | null,
           setType: 'working' as SetType,
           isCompleted: false,
         };
@@ -172,6 +177,7 @@ export async function startSession(
     startedAt: startedAt.getTime(),
     routineId: options.routineId ?? null,
     routineName: options.routineName ?? null,
+    notes: null,
     exercises: activeExercises,
   };
 
@@ -236,6 +242,7 @@ export async function getActiveSession(userId: string): Promise<ActiveSessionDat
       exerciseId: sessionExercises.exerciseId,
       exerciseName: exercises.name,
       orderIndex: sessionExercises.orderIndex,
+      notes: sessionExercises.notes,
     })
     .from(sessionExercises)
     .innerJoin(exercises, eq(exercises.id, sessionExercises.exerciseId))
@@ -265,6 +272,7 @@ export async function getActiveSession(userId: string): Promise<ActiveSessionDat
       setIndex: row.setIndex,
       weightKg: row.weight,
       reps: row.reps,
+      rpe: row.rpe,
       setType: row.setType,
       isCompleted: row.isCompleted,
     });
@@ -284,11 +292,13 @@ export async function getActiveSession(userId: string): Promise<ActiveSessionDat
     startedAt: session.startedAt.getTime(),
     routineId: session.routineId,
     routineName,
+    notes: session.notes,
     exercises: exerciseRows.map((row) => ({
       sessionExerciseId: row.sessionExerciseId,
       exerciseId: row.exerciseId,
       exerciseName: row.exerciseName,
       orderIndex: row.orderIndex,
+      notes: row.notes,
       sets: setsByExercise.get(row.sessionExerciseId) ?? [],
     })),
   };
@@ -326,10 +336,11 @@ export async function getRoutineStartSpecs(routineId: string): Promise<{
 /** Fire-and-forget: complete a set (weight/reps already validated). */
 export function logSetCompletion(
   setId: string,
-  values: { weightKg: number; reps: number; setType: SetType },
+  values: { weightKg: number; reps: number; setType: SetType; rpe?: number | null },
 ): void {
   const now = new Date();
-  const est1rm = estimate1rm(values.weightKg, values.reps);
+  // Warm-up sets never produce an e1RM (excluded from PR-grade data).
+  const est1rm = values.setType === 'warmup' ? null : estimate1rm(values.weightKg, values.reps);
   void enqueue(async () => {
     await db
       .update(sets)
@@ -337,12 +348,51 @@ export function logSetCompletion(
         weight: values.weightKg,
         reps: values.reps,
         setType: values.setType,
+        rpe: values.rpe ?? null,
         isCompleted: true,
         completedAt: now,
         est1rm,
         updatedAt: now,
       })
       .where(eq(sets.id, setId));
+  });
+}
+
+/** Fire-and-forget: per-set RPE edits land without completing anything. */
+export function updateSetRpe(setId: string, rpe: number | null): void {
+  const now = new Date();
+  void enqueue(async () => {
+    await db.update(sets).set({ rpe, updatedAt: now }).where(eq(sets.id, setId));
+  });
+}
+
+/** Fire-and-forget: per-set type changes (also updates uncompleted rows). */
+export function updateSetType(setId: string, setType: SetType): void {
+  const now = new Date();
+  void enqueue(async () => {
+    await db.update(sets).set({ setType, updatedAt: now }).where(eq(sets.id, setId));
+  });
+}
+
+/** Fire-and-forget: session-level note. */
+export function updateSessionNote(sessionId: string, note: string): void {
+  const now = new Date();
+  void enqueue(async () => {
+    await db
+      .update(sessions)
+      .set({ notes: note || null, updatedAt: now })
+      .where(eq(sessions.id, sessionId));
+  });
+}
+
+/** Fire-and-forget: per-exercise note. */
+export function updateExerciseNote(sessionExerciseId: string, note: string): void {
+  const now = new Date();
+  void enqueue(async () => {
+    await db
+      .update(sessionExercises)
+      .set({ notes: note || null, updatedAt: now })
+      .where(eq(sessionExercises.id, sessionExerciseId));
   });
 }
 

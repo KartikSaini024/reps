@@ -16,6 +16,7 @@ import { Text } from '@/components/text';
 import { db } from '@/db/client';
 import { ensureSeeded } from '@/db/seed';
 import { useActiveSessionStore } from '@/stores/active-session';
+import { useSettingsStore } from '@/stores/settings';
 import { colors, Spacing } from '@/theme';
 
 import migrations from '../../drizzle/migrations';
@@ -82,6 +83,8 @@ function RootLayout() {
           // banner offers resume with correct elapsed time. Best-effort,
           // non-blocking — never gates the app on this.
           void useActiveSessionStore.getState().recoverOnLaunch();
+          // Settings (units, RPE visibility) — non-blocking.
+          void useSettingsStore.getState().hydrate();
         }
       })
       .catch((error: unknown) => {

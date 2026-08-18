@@ -1,7 +1,10 @@
-import { Pressable, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, TextInput, View } from 'react-native';
 
 import { Text } from '@/components/text';
-import { SetRow } from '@/components/workout/set-row';
+import { type KeypadField, SetRow } from '@/components/workout/set-row';
+import { formatWeightKg } from '@/config/units';
+import type { Units } from '@/db/schema';
 import type { ActiveExercise } from '@/stores/active-session';
 import { colors, FontFamily, Spacing } from '@/theme';
 
@@ -9,35 +12,53 @@ export interface ExerciseSectionProps {
   exercise: ActiveExercise;
   position: number;
   exerciseCount: number;
+  units: Units;
+  showRpe: boolean;
+  activeField: { setId: string; field: KeypadField } | null;
+  draft: string;
+  onOpenField: (setId: string, field: KeypadField) => void;
   onCompleteSet: (setId: string) => void;
-  onWeightChange: (setId: string, text: string) => void;
-  onRepsChange: (setId: string, text: string) => void;
+  onCycleType: (setId: string) => void;
   onAddSet: () => void;
   onRemoveSet: (setId: string) => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
   onRemoveExercise: () => void;
+  onNoteChange: (note: string) => void;
 }
 
 /**
  * One exercise block in the active workout (DESIGN §9.1): name, previous
- * performance line (always visible), set table, add-set. Reorder/remove
- * controls in the header — quiet, 56dp.
+ * performance line (always visible, unit-converted), set table with the
+ * keypad-driven SetRow, per-exercise notes (inline, never modal).
  */
 export function ExerciseSection({
   exercise,
   position,
   exerciseCount,
+  units,
+  showRpe,
+  activeField,
+  draft,
+  onOpenField,
   onCompleteSet,
-  onWeightChange,
-  onRepsChange,
+  onCycleType,
   onAddSet,
   onRemoveSet,
   onMoveUp,
   onMoveDown,
   onRemoveExercise,
+  onNoteChange,
 }: ExerciseSectionProps) {
+  const [notesOpen, setNotesOpen] = useState(false);
   const firstUncompleted = exercise.sets.findIndex((set) => !set.isCompleted);
+
+  const previousSummary =
+    exercise.previousByIndex.length === 0
+      ? null
+      : `LAST · ${exercise.previousByIndex
+          .map((set) => `${formatWeightKg(set.weightKg, units)} × ${set.reps}`)
+          .join(', ')}`;
 
   return (
     <View style={{ borderWidth: 2, borderColor: colors.edge, backgroundColor: colors.panel }}>
@@ -46,6 +67,12 @@ export function ExerciseSection({
           <Text variant="body" numberOfLines={1} style={{ flex: 1, fontFamily: FontFamily.uiBold }}>
             {exercise.exerciseName}
           </Text>
+          <SectionButton
+            label={`${exercise.exerciseName} notes`}
+            glyph="✎"
+            onPress={() => setNotesOpen((open) => !open)}
+            active={notesOpen || exercise.notes.length > 0}
+          />
           {exerciseCount > 1 ? (
             <View style={{ flexDirection: 'row' }}>
               <SectionButton
@@ -69,8 +96,34 @@ export function ExerciseSection({
           />
         </View>
         <Text variant="micro" color="faint" numberOfLines={1}>
-          {exercise.previousSummary ?? 'first time — no history yet'}
+          {previousSummary ?? 'first time — no history yet'}
         </Text>
+        {notesOpen ? (
+          <View
+            style={{
+              borderWidth: 2,
+              borderColor: colors.edge,
+              backgroundColor: colors.void,
+              paddingHorizontal: Spacing[3],
+            }}
+          >
+            <TextInput
+              value={exercise.notes}
+              onChangeText={onNoteChange}
+              placeholder="Notes for this exercise"
+              placeholderTextColor={colors.faint}
+              multiline
+              style={{
+                color: colors.ink,
+                fontFamily: FontFamily.ui,
+                fontSize: 14,
+                paddingVertical: Spacing[2],
+                minHeight: 48,
+                textAlignVertical: 'top',
+              }}
+            />
+          </View>
+        ) : null}
       </View>
 
       {/* Column header */}
@@ -83,31 +136,32 @@ export function ExerciseSection({
           paddingVertical: Spacing[1],
         }}
       >
-        <HeaderCell label="SET" width={40} />
+        <HeaderCell label="SET" width={showRpe ? 48 : 40} />
         <HeaderCell label="PREV" flex />
-        <HeaderCell label="KG" width={88} />
-        <HeaderCell label="REPS" width={64} />
+        <HeaderCell label={units.toUpperCase()} width={showRpe ? 76 : 88} />
+        <HeaderCell label="REPS" width={showRpe ? 52 : 64} />
+        {showRpe ? <HeaderCell label="RPE" width={48} /> : null}
         <HeaderCell label="✓" width={56} />
       </View>
 
-      {exercise.sets.map((set) => {
+      {exercise.sets.map((set, index) => {
         const previous = exercise.previousByIndex[set.setIndex];
         return (
           <SetRow
             key={set.setId}
             set={set}
-            previousLabel={previous ? `${previous.weightKg}×${previous.reps}` : null}
-            state={
-              set.isCompleted
-                ? 'done'
-                : exercise.sets.indexOf(set) === firstUncompleted
-                  ? 'active'
-                  : 'pending'
+            previousLabel={
+              previous ? `${formatWeightKg(previous.weightKg, units)}×${previous.reps}` : null
             }
-            onComplete={() => onCompleteSet(set.setId)}
-            onWeightChange={(text) => onWeightChange(set.setId, text)}
-            onRepsChange={(text) => onRepsChange(set.setId, text)}
-            onRemove={() => onRemoveSet(set.setId)}
+            state={set.isCompleted ? 'done' : index === firstUncompleted ? 'active' : 'pending'}
+            units={units}
+            showRpe={showRpe}
+            activeField={activeField}
+            draft={draft}
+            onOpenField={onOpenField}
+            onComplete={onCompleteSet}
+            onCycleType={onCycleType}
+            onRemove={onRemoveSet}
           />
         );
       })}
@@ -138,11 +192,13 @@ function SectionButton({
   glyph,
   onPress,
   disabled = false,
+  active = false,
 }: {
   label: string;
   glyph: string;
   onPress: () => void;
   disabled?: boolean;
+  active?: boolean;
 }) {
   return (
     <Pressable
@@ -159,7 +215,7 @@ function SectionButton({
         opacity: disabled ? 0.3 : 1,
       }}
     >
-      <Text variant="label" color={glyph === '✕' ? 'pr' : 'faint'}>
+      <Text variant="label" color={glyph === '✕' ? 'pr' : active ? 'coin' : 'faint'}>
         {glyph}
       </Text>
     </Pressable>

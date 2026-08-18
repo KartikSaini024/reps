@@ -1,4 +1,4 @@
-import { asc, isNull } from 'drizzle-orm';
+import { asc, eq, isNull } from 'drizzle-orm';
 
 import { db } from '../client';
 import { newId } from '../ids';
@@ -24,6 +24,24 @@ export function getOrCreateLocalUser(): Promise<User> {
     });
   }
   return userPromise;
+}
+
+export interface UserSettingsPatch {
+  units?: User['units'];
+  showRpe?: boolean;
+}
+
+export async function updateUserSettings(patch: UserSettingsPatch): Promise<User> {
+  const user = await getOrCreateLocalUser();
+  await db
+    .update(users)
+    .set({ ...patch, updatedAt: new Date() })
+    .where(eq(users.id, user.id));
+  const refreshed = await db.select().from(users).where(eq(users.id, user.id)).limit(1);
+  if (!refreshed[0]) {
+    throw new Error('Failed to update user settings');
+  }
+  return refreshed[0];
 }
 
 async function resolveLocalUser(): Promise<User> {

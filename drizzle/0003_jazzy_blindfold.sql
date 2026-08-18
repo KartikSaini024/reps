@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD `show_rpe` integer DEFAULT false NOT NULL;
