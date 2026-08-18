@@ -248,22 +248,25 @@ export async function getActiveSession(userId: string): Promise<ActiveSessionDat
     .innerJoin(exercises, eq(exercises.id, sessionExercises.exerciseId))
     .where(and(eq(sessionExercises.sessionId, session.id), isNull(sessionExercises.deletedAt)))
     .orderBy(asc(sessionExercises.orderIndex));
-  if (exerciseRows.length === 0) {
-    return null;
-  }
-  const setRows = await db
-    .select()
-    .from(sets)
-    .where(
-      and(
-        inArray(
-          sets.sessionExerciseId,
-          exerciseRows.map((row) => row.sessionExerciseId),
-        ),
-        isNull(sets.deletedAt),
-      ),
-    )
-    .orderBy(asc(sets.setIndex));
+  // An empty exercise list is still a recoverable session (started empty,
+  // killed before adding anything) — never drop it to null or the row
+  // lingers as an invisible 'active' orphan.
+  const setRows =
+    exerciseRows.length === 0
+      ? []
+      : await db
+          .select()
+          .from(sets)
+          .where(
+            and(
+              inArray(
+                sets.sessionExerciseId,
+                exerciseRows.map((row) => row.sessionExerciseId),
+              ),
+              isNull(sets.deletedAt),
+            ),
+          )
+          .orderBy(asc(sets.setIndex));
   const setsByExercise = new Map<string, ActiveSetData[]>();
   for (const row of setRows) {
     const list = setsByExercise.get(row.sessionExerciseId) ?? [];
@@ -400,7 +403,25 @@ export function updateExerciseNote(sessionExerciseId: string, note: string): voi
 export function updateSetValues(setId: string, weightKg: number, reps: number): void {
   const now = new Date();
   void enqueue(async () => {
-    await db.update(sets).set({ weight: weightKg, reps, updatedAt: now }).where(eq(sets.id, setId));
+    // If the set is already completed, editing its values must recompute
+    // est_1rm — a stale estimate would poison future PR detection.
+    const existing = await db
+      .select({ isCompleted: sets.isCompleted, setType: sets.setType })
+      .from(sets)
+      .where(eq(sets.id, setId))
+      .limit(1);
+    const completed = existing[0]?.isCompleted === true;
+    const est1rm =
+      completed && existing[0]?.setType !== 'warmup' ? estimate1rm(weightKg, reps) : undefined;
+    await db
+      .update(sets)
+      .set({
+        weight: weightKg,
+        reps,
+        ...(est1rm !== undefined ? { est1rm } : {}),
+        updatedAt: now,
+      })
+      .where(eq(sets.id, setId));
   });
 }
 

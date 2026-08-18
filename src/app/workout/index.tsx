@@ -234,6 +234,28 @@ export default function ActiveWorkout() {
     if (activeField && activeField.setId === setId) {
       commitDraft();
     }
+    // Tap-✓ with an empty value redirects into that field instead of a
+    // silent no-op. Read FRESH store state — the closure's `exercises`
+    // predates the commitDraft() above.
+    let fresh: { weightKg: number | null; reps: number | null } | null = null;
+    for (const exercise of useActiveSessionStore.getState().exercises) {
+      const set = exercise.sets.find((s) => s.setId === setId);
+      if (set) {
+        fresh = { weightKg: set.weightKg, reps: set.reps };
+        break;
+      }
+    }
+    if (!fresh) {
+      return;
+    }
+    if (fresh.weightKg === null || fresh.weightKg <= 0) {
+      openField(setId, 'weight');
+      return;
+    }
+    if (fresh.reps === null || fresh.reps <= 0) {
+      openField(setId, 'reps');
+      return;
+    }
     completeSet(sessionExerciseId, setId);
     if (activeField && activeField.setId === setId) {
       setActiveField(null);
