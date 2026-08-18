@@ -15,6 +15,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Text } from '@/components/text';
 import { db } from '@/db/client';
 import { ensureSeeded } from '@/db/seed';
+import { useActiveSessionStore } from '@/stores/active-session';
 import { colors, Spacing } from '@/theme';
 
 import migrations from '../../drizzle/migrations';
@@ -77,6 +78,10 @@ function RootLayout() {
       .then(() => {
         if (!cancelled) {
           setSeedState({ status: 'done' });
+          // Crash recovery (PRD D12): hydrate any unfinished session so the
+          // banner offers resume with correct elapsed time. Best-effort,
+          // non-blocking — never gates the app on this.
+          void useActiveSessionStore.getState().recoverOnLaunch();
         }
       })
       .catch((error: unknown) => {

@@ -175,3 +175,41 @@ record of what changed, why, and what was deliberately deferred.
 **Known gaps left:** no drag auto-scroll when dragging beyond the visible area (lists are short; revisit if routines grow past ~10 entries); no supersets/folders (explicitly out of scope); picker doesn't filter out exercises already added (they're marked "added" instead).
 
 **QA pass (same day, pre-phase-5):** three real bugs found by audit and fixed: (1) ReorderableList slot math trusted the gesture closure's `index` prop, which can go stale when mid-drag reorders re-render the list — the row now tracks its live slot in a shared value the worklet reads; (2) `getOrCreateLocalUser` could double-insert under concurrent first calls (seed + screen) — now promise-memoised with failure-clearing retry; (3) search LIKE patterns escaped `%`/`_`/`\` but SQLite ignores backslash escaping without an explicit `ESCAPE '\'` clause — raw sql with ESCAPE added. Verified: tsc, Biome, export, and dev bundle (real Expo Go params) all carry the fixes.
+
+---
+
+## Phase 5 — Active workout logging
+
+**Date:** 18 August 2026
+
+**Goal:** Start a session, log sets, finish, saved correctly. THE critical screen — speed is a hard requirement. LOG register per DESIGN §9.1.
+
+**What was done:**
+
+- **Sessions repository** (`src/db/repositories/sessions.ts`): start (prefills resolved before row creation), previous-performance lookup (most recent *complete* session per exercise, completed working sets by index), fire-and-forget set completion/update/add/remove (soft deletes), exercise add/remove/reorder, finish (duration computed from `started_at` at finish time — never accumulated; authoritative volume recomputed in SQL; routine `last_performed_at` stamped), discard, recovery fetch, latest-completed lookup. **All active-session writes flow through an ordered promise queue** (`enqueue`) so a fast follow-up can never overtake the row it depends on, while the UI never awaits anything.
+- **Epley e1RM** (`estimate1rm`): computed on set completion and stored on the set row (r ≤ 10 per PRD E6); the denormalised column is ready for PR detection and charts.
+- **Active-session store** (`src/stores/active-session.ts`, Zustand): synchronous optimistic mutations + background writes; prefill semantics (same set index last time, else the final set of that session, else empty); derived volume/set-count; launch recovery; `lastFinished` summary handoff to the History tab.
+- **SetRow** (DESIGN §8): 56dp grid `SET | PREV | KG | REPS | ✓`, three states (pending faint / active panel-bg with amber-focused field / done mint with filled checkbox), tabular numerals, one-tap completion, long-press set number to remove, invalid/empty values redirect the tap into the empty field instead of failing silently. Inputs are system-keyboard **temporarily** — Phase 6's keypad swaps in behind the same callbacks.
+- **ExerciseSection**: name, `LAST · 80 × 8, 8, 7` previous-performance line always visible, column header, set rows, + Add set (56dp), move ▲▼ and remove ✕ in the header.
+- **Workout screen** (`/workout`): header with name + live timer (dataXL cyan, from `started_at`, display-only 1s tick) + live sets/volume; scroll of exercise sections; bottom third: + Add exercise (56dp), Finish (56dp primary), Discard (56dp). `useKeepAwake()` while mounted. Nothing modal except the discard confirmation. No spinners anywhere.
+- **Persistent banner** (PRD D2): live-ticking 56dp bar above the tab navigator on every tab; tap to resume. One live session at a time — starting while active routes to the running session instead (never a dialog).
+- **Start points**: ▶ button per routine row (72dp) and "Empty ▶" in the Routines header; both navigate once the session model is ready (local SQLite only — no perceptible wait).
+- **Crash recovery** (PRD D12): launch gate (after seed, non-blocking) hydrates any `status='active'` session into the store → banner appears with correct elapsed time → tap to resume. Kill the app mid-workout and reopen: everything logged is there.
+- **Finish flow**: session persisted `complete` with duration/volume; History tab shows a plain "Workout saved — N sets · X kg · MM:SS" card plus the latest completed session. No XP, no celebration (Phase 10).
+- **Rest-timer hook** (`src/session/on-set-completed.ts`): completion calls a typed no-op hook — the timer phase plugs in here.
+- **expo-keep-awake** declared and installed (new dependency: first-party Expo, required by PRD D11).
+
+**Taps to log a repeat set: ONE.** The next set's weight/reps arrive pre-filled from the previous session's same index; the checkbox completes it. (Modified set: tap field → edit → ✓.)
+
+**Verification:** `tsc --noEmit` clean · Biome clean · production export clean · dev bundle (real Expo Go params) contains session store/repository/screen markers.
+
+**Decisions of note:**
+
+- Write-serialisation via a repository-level queue rather than awaiting writes in the UI — satisfies "never block" without losing write ordering (complete-before-insert races).
+- Recovery is the banner itself (non-modal, per the constraint) — PRD US-06's "prompt" implemented as an inline resumable bar, not a dialog.
+- Exercise reorder mid-session via ▲▼ buttons (56dp) rather than drag — exercise sections are variable-height, which the fixed-row drag from Phase 4 doesn't fit; quiet and fast, revisit drag only if it feels slow in practice.
+- Set removal via long-press on the set number — no per-row ✕ keeps the grid clean per DESIGN §8.
+- `startSession` creates session/exercise/set rows in the background immediately (not lazily at first completion) so crash recovery has rows to restore from second one.
+- History tab remains a placeholder (latest session only) — full history is the analytics phase.
+
+**Known gaps left:** rest timer (hook stubbed); set types/RPE/notes/units (Phase 6 — set rows already carry `setType` and volume already excludes non-working sets); warm-up exclusion logic present but invisible until types exist; banner on non-tab screens (exercise detail, pickers) intentionally omitted for this phase — the session is still reachable via tab bar.
